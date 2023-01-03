@@ -26,8 +26,13 @@ from google.protobuf import duration_pb2, field_mask_pb2
 from django.http import HttpResponse
 from django.urls import reverse_lazy
 from django.utils import timezone as djangotimezone
-import aspose.email as ae
-from aspose.email import MailMessage, SaveOptions, HtmlFormatOptions
+import sys
+import os.path
+from collections import defaultdict
+from email.parser import Parser
+from bs4 import BeautifulSoup
+# import aspose.email as ae
+# from aspose.email import MailMessage, SaveOptions, HtmlFormatOptions
 
 sapath = '/Users/buttercup/Documents/GitHub/key/celerates-playground-318603-f9d994464b15.json'
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = sapath
@@ -106,43 +111,86 @@ class UpdatePostView(UpdateView):
   def post(self,request, pk):
     context ={}
     form = EditDataForm(request.POST or None)
-    if form.is_valid():
+    context['form']= form
+
+    bucket_name='xlemail'
+    if 'check' in request.POST:
+      print('ada check!')
+      context = updaterequest(request,pk,'check')
+      blobname = context['response'][1][2:-2]
+      destination_file_name = '/Users/buttercup/Documents/GitHub/djangoforms/apiforms/polls/temp/'+ str(blobname.split('/')[-1])
+      downloadfromgcs(sapath,bucket_name,blobname,destination_file_name)
+      saveto = '/Users/buttercup/Documents/GitHub/djangoforms/apiforms/polls/templates/checkemail.html'
+      # parseemltohtml(destination_file_name,saveto)
+      return render(request, 'checkemail.html', context)
+    elif 'submit' in request.POST:
+      print('ada submit')
+      context = updaterequest(request,pk,'submit')
+    elif 'update' in request.POST:
+      print('ada update')
+      context = updaterequest(request,pk,'update')
+    # context['form']= form
+    return render(request, "edit.html", context)
+  # fields = '__all__'
+
+def updaterequest(request, pk, typerequest):
+  context ={}
+  form = EditDataForm(request.POST or None)
+  print(form.data)
+  if form.is_valid():
       jsondata = json.loads(form.data['items'])
       print(jsondata)
       retlis,datalis = mixmatch(jsondata['bodyhtml'],jsondata)
-      jsonfinal = makejsonemaildata(jsondata,datalis,retlis,jsondata['bodyhtml'])
+      jsonfinal = makejsonemaildata(jsondata,datalis,retlis,jsondata['bodyhtml'],typerequest)
       
       olddata = DataEmail.objects.get(id=pk)
       olddata.items = jsondata
 
       print(jsonfinal)
-      if len(jsondata['schjobid'])>0:
-        client,projectid = get_cloud_scheduler_client(sapath)
-        jobid = jsondata['schjobid']
-        schedule = makecron(jsondata)
-        timezone = jsondata['schtimezone']
-        description = jsondata['schdescription']
-        try:
-          job = update_job(client, projectid, jobid, schedule, jsonfinal, description, timezone, location='asia-southeast2')
-          context['data']=job
-          olddata.save()
-        except Exception as e:
-          context['data']=e
-      elif len(jsondata['schjobid'])==0:
+      if typerequest == 'update':
         olddata.save()
-        # r = requests.post(
-        #         audience, 
-        #         headers={'Authorization': f"Bearer {TOKEN}", "Content-Type": "application/json"},
-        #         data=json.dumps(jsonfinal)  # possible request parameters
-        #     )
-        # context['response']=r.status_code, r.text
-        # print(r.status_code, r.text)
-        # context['data']=jsonfinal
-    else:
-        form = EditDataForm()
-    context['form']= form
-    return render(request, "index.html", context)
-  # fields = '__all__'
+      else:
+        if len(jsondata['schjobid'])>0:
+          client,projectid = get_cloud_scheduler_client(sapath)
+          jobid = jsondata['schjobid']
+          schedule = makecron(jsondata)
+          timezone = jsondata['schtimezone']
+          description = jsondata['schdescription']
+          try:
+            job = update_job(client, projectid, jobid, schedule, jsonfinal, description, timezone, location='asia-southeast2')
+            context['data']=job
+            olddata.save()
+
+          except Exception as e:
+            print('Failed')
+            print(e)
+            context['data']=e
+        elif len(jsondata['schjobid'])==0:
+          try:
+            r = requests.post(
+                    audience, 
+                    headers={'Authorization': f"Bearer {TOKEN}", "Content-Type": "application/json"},
+                    data=json.dumps(jsonfinal)  # possible request parameters
+                )
+            if r.status_code==200:
+              context['response']=r.status_code, r.text
+              obj = olddata.save(commit=False)
+              obj.schedulelast = djangotimezone.now()
+              obj.save()
+              print('saved in database')
+              print(r.status_code, r.text)
+            else:
+              context['response']=r.status_code, r.text
+          except Exception as e:
+            print('Failed')
+            print(e)
+          context['data']=jsonfinal
+  else:
+      print("form is not valid!")
+      print(form.errors.as_json())
+      form = EditDataForm()
+  context['form']= form
+  return context
 
 class DeletePostView(DeleteView):
   model = DataEmail
@@ -187,7 +235,9 @@ def indexdata(request):
       destination_file_name = '/Users/buttercup/Documents/GitHub/djangoforms/apiforms/polls/temp/'+ str(blobname.split('/')[-1])
       downloadfromgcs(sapath,bucket_name,blobname,destination_file_name)
       saveto = '/Users/buttercup/Documents/GitHub/djangoforms/apiforms/polls/templates/checkemail.html'
-      parseemltohtml(destination_file_name,saveto)
+      # parseemltohtml(destination_file_name,saveto)
+      att = parseattachment(destination_file_name, '/tempattach')
+      addattachmenttohtml(saveto,saveto,att)
       return render(request, 'checkemail.html', context)
     elif 'submit' in request.POST:
       print('ada submit')
@@ -200,7 +250,6 @@ def sendrequest(request, typerequest):
   form = DataForm(request.POST or None)
   print(form.data)
   if form.is_valid():
-      formlist = [form]
       jsondata = json.loads(form.data['items'])
       print(jsondata)
       retlis,datalis = mixmatch(jsondata['bodyhtml'],jsondata)
@@ -709,16 +758,82 @@ def downloadfromgcs(keypath,bucket_name,source_blob_name,destination_file_name):
     blob.download_to_filename(destination_file_name)
     return f'Downloaded storage object {source_blob_name} from bucket {bucket_name} to local file {destination_file_name}.'
 
-def parseemltohtml(pathtoeml,saveto):
-  # Load EML message
-  eml = MailMessage.load(pathtoeml)
+def parse_message(filename):
+    with open(filename) as f:
+        return Parser().parse(f)
 
-  # Set SaveOptions
-  options = SaveOptions.default_html
-  options.embed_resources = False
-  options.html_format_options = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS
-  # options.HtmlFormatOptions = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS #save the message headers to output HTML using the formatting options
+def find_attachments(message):
+    """
+    Return a tuple of parsed content-disposition dict, message object
+    for each attachment found.
+    """
+    found = []
+    for part in message.walk():
+        if 'content-disposition' not in part:
+            continue
+        cdisp = part['content-disposition'].split(';')
+        cdisp = [x.strip() for x in cdisp]
+        if cdisp[0].lower() != 'attachment':
+            continue
+        parsed = {}
+        for kv in cdisp[1:]:
+            key, val = kv.split('=')
+            if val.startswith('"'):
+                val = val.strip('"')
+            elif val.startswith("'"):
+                val = val.strip("'")
+            parsed[key] = val
+        found.append((parsed, part))
+    return found
 
-  # Convert EML to HTML
-  eml.save(saveto, options)
-  return f'eml {pathtoeml} parsed to html {saveto}'
+def parseattachment(eml_filename, output_dir):
+    attachlist = ''
+    msg = parse_message(eml_filename)
+    subject = eml_filename.split('/')[-1]
+    attachments = find_attachments(msg)
+    print ("Found {0} attachments...".format(len(attachments)))
+    if not os.path.isdir(output_dir):
+        os.mkdir(output_dir)
+    for cdisp, part in attachments:
+        cdisp_filename = os.path.normpath(cdisp['filename'])
+        # prevent malicious crap
+        if os.path.isabs(cdisp_filename):
+            cdisp_filename = os.path.basename(cdisp_filename)
+        cdisp_filename = str(subject)+'-'+str(cdisp_filename)
+        towrite = os.path.join(output_dir, cdisp_filename)
+        attachlist += f'<a href="{towrite}" download>{cdisp_filename}</a>\n'
+        print( "Writing " + towrite)
+        with open(towrite, 'wb') as fp:
+            data = part.get_payload(decode=True)
+            fp.write(data)
+    return attachlist
+
+def addattachmenttohtml(inputhtml,outputhtml,attachmentlink):
+  with open(inputhtml, 'r') as f:
+
+      contents = f.read()
+
+      soup = BeautifulSoup(contents, 'lxml')
+      soup.body.append(BeautifulSoup(attachmentlink, 'html.parser'))
+      print(soup.html)
+
+  with open(outputhtml, "w", encoding = 'utf-8') as file:
+      
+      # prettify the soup object and convert it into a string
+      file.write(str(soup.prettify()))
+
+# def parseemltohtml(pathtoeml,saveto):
+#   # Load EML message
+#   eml = MailMessage.load(pathtoeml)
+
+#   # Set SaveOptions
+#   options = SaveOptions.default_html
+#   options.embed_resources = False
+#   options.html_format_options = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS
+#   # options.HtmlFormatOptions = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS #save the message headers to output HTML using the formatting options
+
+#   # Convert EML to HTML
+#   eml.save(saveto, options)
+#   return f'eml {pathtoeml} parsed to html {saveto}'
+
+

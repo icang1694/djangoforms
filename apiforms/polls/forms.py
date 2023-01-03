@@ -19,6 +19,8 @@ class EditDataForm(forms.ModelForm):
         fields = ['items']
     helper = FormHelper()
     helper.add_input(Submit('update', 'Update', css_class='btn-primary'))
+    helper.add_input(Submit('submit', 'Submit', css_class='btn-primary'))
+    helper.add_input(Submit('check', 'Check', css_class='btn-primary'))
     helper.form_method = 'POST'
 
 class DeleteDataForm(forms.ModelForm):
