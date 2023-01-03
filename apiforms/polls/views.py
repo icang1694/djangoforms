@@ -31,13 +31,17 @@ import os.path
 from collections import defaultdict
 from email.parser import Parser
 from bs4 import BeautifulSoup
-# import aspose.email as ae
-# from aspose.email import MailMessage, SaveOptions, HtmlFormatOptions
+import aspose.email as ae
+from aspose.email import MailMessage, SaveOptions, HtmlFormatOptions
+import os
+from dotenv import load_dotenv
 
-sapath = '/Users/buttercup/Documents/GitHub/key/celerates-playground-318603-f9d994464b15.json'
+load_dotenv()
+
+sapath = os.getenv('sapath')
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = sapath
 requestgcp = google.auth.transport.requests.Request()
-audience = 'https://asia-southeast2-celerates-playground-318603.cloudfunctions.net/xl_email_ready'
+audience = os.getenv('audience')
 TOKEN = google.oauth2.id_token.fetch_id_token(requestgcp, audience)
 # projectid = 'celerates-playground-318603'
 
@@ -105,8 +109,8 @@ class UpdatePostView(UpdateView):
   template_name='edit.html'
   # fields = '__all__'
 
-  def checkemail(request, pk):
-    return render(request, "email/index.html")
+  # def checkemail(request, pk):
+  #   return render(request, "email/index.html")
 
   def post(self,request, pk):
     context ={}
@@ -118,10 +122,12 @@ class UpdatePostView(UpdateView):
       print('ada check!')
       context = updaterequest(request,pk,'check')
       blobname = context['response'][1][2:-2]
-      destination_file_name = '/Users/buttercup/Documents/GitHub/djangoforms/apiforms/polls/temp/'+ str(blobname.split('/')[-1])
+      destination_file_name = str(os.getenv('temppath')) + str(blobname.split('/')[-1])
       downloadfromgcs(sapath,bucket_name,blobname,destination_file_name)
-      saveto = '/Users/buttercup/Documents/GitHub/djangoforms/apiforms/polls/templates/checkemail.html'
-      # parseemltohtml(destination_file_name,saveto)
+      saveto = os.getenv('saveto')
+      parseemltohtml(destination_file_name,saveto)
+      att = parseattachment(destination_file_name, '/tempattach')
+      addattachmenttohtml(saveto,saveto,att)
       return render(request, 'checkemail.html', context)
     elif 'submit' in request.POST:
       print('ada submit')
@@ -232,10 +238,10 @@ def indexdata(request):
       print('ada check!')
       context = sendrequest(request,'check')
       blobname = context['response'][1][2:-2]
-      destination_file_name = '/Users/buttercup/Documents/GitHub/djangoforms/apiforms/polls/temp/'+ str(blobname.split('/')[-1])
+      destination_file_name = str(os.getenv('temppath'))+ str(blobname.split('/')[-1])
       downloadfromgcs(sapath,bucket_name,blobname,destination_file_name)
-      saveto = '/Users/buttercup/Documents/GitHub/djangoforms/apiforms/polls/templates/checkemail.html'
-      # parseemltohtml(destination_file_name,saveto)
+      saveto = os.getenv('saveto')
+      parseemltohtml(destination_file_name,saveto)
       att = parseattachment(destination_file_name, '/tempattach')
       addattachmenttohtml(saveto,saveto,att)
       return render(request, 'checkemail.html', context)
@@ -616,11 +622,11 @@ def create_job(cs_client, project_id, job_id, schedule, bodyreq, timezone, descr
     job_name = f'projects/{project_id}/locations/{location}/jobs/{job_id}'
     ht = HttpTarget(
         http_method = "POST",
-        uri         = "https://asia-southeast2-celerates-playground-318603.cloudfunctions.net/xl_email_ready",
+        uri         = os.getenv('audience'),
         headers     = {"Content-Type": "application/json"},
         # body        = base64.b64decode("{\"foo\":\"bar\"}")
         body        = json.dumps(bodyreq).encode("utf-8"),
-        oidc_token  = OidcToken(service_account_email="querytobq@celerates-playground-318603.iam.gserviceaccount.com")
+        oidc_token  = OidcToken(service_account_email=os.getenv('service_account_email'))
     )
     job_dict = {
         'name': f'projects/{project_id}/locations/{location}/jobs/{job_id}',
@@ -656,10 +662,10 @@ def update_job(cs_client, project_id, job_id, schedule, bodyreq, timezone, descr
     # job = cs_client.create_job(parent=parent, job=job_dict)
     ht = scheduler_v1.HttpTarget()
     ht.http_method = "POST"
-    ht.uri = "https://asia-southeast2-celerates-playground-318603.cloudfunctions.net/xl_email_ready"
+    ht.uri = os.getenv('audience')
     ht.headers = {"Content-Type": "application/json"}
     ht.body = json.dumps(bodyreq).encode("utf-8")
-    ht.oidc_token = OidcToken(service_account_email="querytobq@celerates-playground-318603.iam.gserviceaccount.com")
+    ht.oidc_token = OidcToken(service_account_email=os.getenv('service_account_email'))
     jobedit = scheduler_v1.Job()
     jobedit.name = job_name
     jobedit.http_target = ht
@@ -822,18 +828,18 @@ def addattachmenttohtml(inputhtml,outputhtml,attachmentlink):
       # prettify the soup object and convert it into a string
       file.write(str(soup.prettify()))
 
-# def parseemltohtml(pathtoeml,saveto):
-#   # Load EML message
-#   eml = MailMessage.load(pathtoeml)
+def parseemltohtml(pathtoeml,saveto):
+  # Load EML message
+  eml = MailMessage.load(pathtoeml)
 
-#   # Set SaveOptions
-#   options = SaveOptions.default_html
-#   options.embed_resources = False
-#   options.html_format_options = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS
-#   # options.HtmlFormatOptions = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS #save the message headers to output HTML using the formatting options
+  # Set SaveOptions
+  options = SaveOptions.default_html
+  options.embed_resources = False
+  options.html_format_options = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS
+  # options.HtmlFormatOptions = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS #save the message headers to output HTML using the formatting options
 
-#   # Convert EML to HTML
-#   eml.save(saveto, options)
-#   return f'eml {pathtoeml} parsed to html {saveto}'
+  # Convert EML to HTML
+  eml.save(saveto, options)
+  return f'eml {pathtoeml} parsed to html {saveto}'
 
 
