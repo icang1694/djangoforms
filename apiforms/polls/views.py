@@ -126,7 +126,7 @@ class UpdatePostView(UpdateView):
       downloadfromgcs(sapath,bucket_name,blobname,destination_file_name)
       saveto = os.getenv('saveto')
       parseemltohtml(destination_file_name,saveto)
-      att = parseattachment(destination_file_name, '/tempattach')
+      att = parseattachment(destination_file_name, 'tempattach/')
       addattachmenttohtml(saveto,saveto,att)
       return render(request, 'checkemail.html', context)
     elif 'submit' in request.POST:
@@ -242,7 +242,7 @@ def indexdata(request):
       downloadfromgcs(sapath,bucket_name,blobname,destination_file_name)
       saveto = os.getenv('saveto')
       parseemltohtml(destination_file_name,saveto)
-      att = parseattachment(destination_file_name, '/tempattach')
+      att = parseattachment(destination_file_name, 'tempattach/')
       addattachmenttohtml(saveto,saveto,att)
       return render(request, 'checkemail.html', context)
     elif 'submit' in request.POST:
