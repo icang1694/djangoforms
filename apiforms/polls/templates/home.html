@@ -1,0 +1,39 @@
+{% extends "base.html" %} {% block content %}
+<h1>Schedule Jobs</h1>
+<a class="btn btn-primary" href="{% url 'indexdata' %}">Create Job</a>
+<a class="btn btn-primary" href="{% url 'updatejobstatus' %}">Get Job Status</a>
+<ul>
+  {% for post in object_list %}
+  <div class="card">
+    <div class="card-header">{{post.pk}}</div>
+    <div class="card-body">
+      <h5 class="card-title">{{post}}</h5>
+      <p class="card-text">
+        <!-- <a href="{% url 'detail' post.pk %}">{{ post }}</a><br /> -->
+
+        <strong>Time Created</strong> : {{ post.created }}<br />
+        <strong>Last Modified</strong> : {{ post.modified }}<br />
+        <strong>Scheduler ID</strong> : {{ post.scheduler }}<br />
+        <strong>Scheduler Status</strong> : {{ post.schedulestatus }}<br />
+        <strong>Schedule Last Run</strong> : {{ post.schedulelast }}<br />
+        <strong>Schedule Next Run</strong> : {{ post.schedulenext }}<br />
+        <a class="btn btn-primary" href="{% url 'update_post' post.pk %}">Edit</a>
+        <a class="btn btn-primary" href="{% url 'pause' post.pk %}">Pause</a>
+        <a class="btn btn-primary" href="{% url 'resume' post.pk %}">Enable</a>
+        <a class="btn btn-primary" href="{% url 'run' post.pk %}">Run</a>
+        <a class="btn btn-primary" href="{% url 'delete_post' post.pk %}">Delete</a>
+      </p>
+    </div>
+  </div>
+
+  {% endfor %}
+</ul>
+
+<script>
+  $(document).ready(function () {
+    console.log("ready!");
+    // data =
+    console.log("{{ object_list }}");
+  });
+</script>
+{%endblock%}

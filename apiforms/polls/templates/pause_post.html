@@ -1,0 +1,11 @@
+{% extends 'base.html' %} {% block title %} Pause An Email Job {% endblock %} {% block content %}
+<div>
+  <div>
+    <div>{{ dataemail }}</div>
+    <div>{{ dataemail.pk }}</div>
+    <div>{{ dataemail.items }}</div>
+    <a class="btn btn-primary" href="{% url 'home' %}">Home</a>
+  </div>
+</div>
+
+{% endblock %}

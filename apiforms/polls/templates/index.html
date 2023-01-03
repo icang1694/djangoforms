@@ -1,0 +1,14 @@
+{% extends 'base.html' %} {% block title %} Create A New Email Job {% endblock %} {% block content %}
+<div>
+  {% load crispy_forms_tags %} {% csrf_token %}
+  <div>{% crispy form %}</div>
+
+  <div>
+    <div>{{ data }}</div>
+    <div>{{ response}}</div>
+
+    <a class="btn btn-primary" href="{% url 'home' %}">Home</a>
+  </div>
+</div>
+
+{% endblock %}
