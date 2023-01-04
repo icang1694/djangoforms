@@ -43,7 +43,7 @@ os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = sapath
 requestgcp = google.auth.transport.requests.Request()
 audience = os.getenv('audience')
 TOKEN = google.oauth2.id_token.fetch_id_token(requestgcp, audience)
-# projectid = 'celerates-playground-318603'
+
 
 class HomeView(ListView):
   model = DataEmail
@@ -121,13 +121,14 @@ class UpdatePostView(UpdateView):
     if 'check' in request.POST:
       print('ada check!')
       context = updaterequest(request,pk,'check')
-      blobname = context['response'][1][2:-2]
+      blobname = context['response'][1][2:-2].split(',')[1].strip()[1:]
       destination_file_name = str(os.getenv('temppath')) + str(blobname.split('/')[-1])
       downloadfromgcs(sapath,bucket_name,blobname,destination_file_name)
       saveto = os.getenv('saveto')
       parseemltohtml(destination_file_name,saveto)
       att = parseattachment(destination_file_name, 'tempattach/')
-      addattachmenttohtml(saveto,saveto,att)
+      if len(att)>0:
+        addattachmenttohtml(saveto,saveto,att)
       return render(request, 'checkemail.html', context)
     elif 'submit' in request.POST:
       print('ada submit')
@@ -237,13 +238,19 @@ def indexdata(request):
     if 'check' in request.POST:
       print('ada check!')
       context = sendrequest(request,'check')
-      blobname = context['response'][1][2:-2]
+      blobname = context['response'][1][2:-2].split(',')[1].strip()[1:]
+      print("BLOBNAME")
+      print(type(blobname))
+      print(blobname)
       destination_file_name = str(os.getenv('temppath'))+ str(blobname.split('/')[-1])
+      print("DESTINATION FILE NAME")
+      print(destination_file_name)
       downloadfromgcs(sapath,bucket_name,blobname,destination_file_name)
       saveto = os.getenv('saveto')
       parseemltohtml(destination_file_name,saveto)
       att = parseattachment(destination_file_name, 'tempattach/')
-      addattachmenttohtml(saveto,saveto,att)
+      if len(att)>0:
+        addattachmenttohtml(saveto,saveto,att)
       return render(request, 'checkemail.html', context)
     elif 'submit' in request.POST:
       print('ada submit')
