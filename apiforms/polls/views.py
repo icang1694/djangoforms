@@ -314,6 +314,8 @@ def sendrequest(request, typerequest):
             print(r.status_code, r.text)
           else:
             context['response']=r.status_code, r.text
+            print('TESTING')
+            print(context['response'][1])
         except Exception as e:
           print('Failed')
           print(e)
