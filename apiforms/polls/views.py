@@ -31,8 +31,8 @@ import os.path
 from collections import defaultdict
 from email.parser import Parser
 from bs4 import BeautifulSoup
-# import aspose.email as ae
-# from aspose.email import MailMessage, SaveOptions, HtmlFormatOptions
+import aspose.email as ae
+from aspose.email import MailMessage, SaveOptions, HtmlFormatOptions
 import os
 from dotenv import load_dotenv
 
@@ -125,7 +125,7 @@ class UpdatePostView(UpdateView):
       destination_file_name = str(os.getenv('temppath')) + str(blobname.split('/')[-1])
       downloadfromgcs(sapath,bucket_name,blobname,destination_file_name)
       saveto = os.getenv('saveto')
-      # parseemltohtml(destination_file_name,saveto)
+      parseemltohtml(destination_file_name,saveto)
       att = parseattachment(destination_file_name, 'tempattach/')
       if len(att)>0:
         addattachmenttohtml(saveto,saveto,att)
@@ -251,7 +251,7 @@ def indexdata(request):
       print(destination_file_name)
       downloadfromgcs(sapath,bucket_name,blobname,destination_file_name)
       saveto = os.getenv('saveto')
-      # parseemltohtml(destination_file_name,saveto)
+      parseemltohtml(destination_file_name,saveto)
       att = parseattachment(destination_file_name, 'tempattach/')
       if len(att)>0:
         addattachmenttohtml(saveto,saveto,att)
@@ -841,18 +841,18 @@ def addattachmenttohtml(inputhtml,outputhtml,attachmentlink):
       # prettify the soup object and convert it into a string
       file.write(str(soup.prettify()))
 
-# def parseemltohtml(pathtoeml,saveto):
-#   # Load EML message
-#   eml = MailMessage.load(pathtoeml)
+def parseemltohtml(pathtoeml,saveto):
+  # Load EML message
+  eml = MailMessage.load(pathtoeml)
 
-#   # Set SaveOptions
-#   options = SaveOptions.default_html
-#   options.embed_resources = False
-#   options.html_format_options = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS
-#   # options.HtmlFormatOptions = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS #save the message headers to output HTML using the formatting options
+  # Set SaveOptions
+  options = SaveOptions.default_html
+  options.embed_resources = False
+  options.html_format_options = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS
+  # options.HtmlFormatOptions = HtmlFormatOptions.WRITE_HEADER | HtmlFormatOptions.WRITE_COMPLETE_EMAIL_ADDRESS #save the message headers to output HTML using the formatting options
 
-#   # Convert EML to HTML
-#   eml.save(saveto, options)
-  # return f'eml {pathtoeml} parsed to html {saveto}'
+  # Convert EML to HTML
+  eml.save(saveto, options)
+  return f'eml {pathtoeml} parsed to html {saveto}'
 
 
