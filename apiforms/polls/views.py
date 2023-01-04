@@ -121,7 +121,7 @@ class UpdatePostView(UpdateView):
     if 'check' in request.POST:
       print('ada check!')
       context = updaterequest(request,pk,'check')
-      blobname = context['response'][1:-1].split(',')[-1].strip()[1:-1]
+      blobname = context['response'][1][1:-1].split(',')[-1].strip()[1:-1]
       destination_file_name = str(os.getenv('temppath')) + str(blobname.split('/')[-1])
       downloadfromgcs(sapath,bucket_name,blobname,destination_file_name)
       saveto = os.getenv('saveto')
@@ -242,7 +242,7 @@ def indexdata(request):
       print(context)
       print("CONTEXT RESPONSE")
       print(context['response'][1])
-      blobname = context['response'][1:-1].split(',')[-1].strip()[1:-1]
+      blobname = context['response'][1][1:-1].split(',')[-1].strip()[1:-1]
       print("BLOBNAME")
       print(type(blobname))
       print(blobname)
