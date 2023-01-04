@@ -238,6 +238,10 @@ def indexdata(request):
     if 'check' in request.POST:
       print('ada check!')
       context = sendrequest(request,'check')
+      print("CONTEXT")
+      print(context)
+      print("CONTEXT RESPONSE")
+      print(context['response'][1])
       blobname = context['response'][1][2:-2].split(',')[1].strip()[1:]
       print("BLOBNAME")
       print(type(blobname))
